@@ -166,9 +166,28 @@ insert_ko() {
 	insert_security_subsys
 }
 
+insert_cv610_streamer_capture_audio() {
+	# AI capture side only for the analog mic on the inner ACODEC; the
+	# playback modules (open_ao, open_adec) stay out. open_acodec drives the
+	# analog front end and must follow open_aio.
+	modprobe open_aio
+	modprobe open_ai
+	modprobe open_aenc
+	modprobe open_acodec
+}
+
+remove_cv610_streamer_capture_audio() {
+	rmmod open_acodec 2>/dev/null
+	rmmod open_aenc 2>/dev/null
+	rmmod open_ai 2>/dev/null
+	rmmod open_aio 2>/dev/null
+}
+
 insert_cv610_streamer_ko() {
 	# Minimal hardware-verified path for the IMX662 H.265 RTP development
-	# image. Avoid unrelated accelerators, audio, PM, and watchdog drivers.
+	# image. Avoid unrelated accelerators, PM, and watchdog drivers. Audio is
+	# opt-in via CV610_AUDIO=1 in /etc/load-hisilicon.conf so the default
+	# module set stays exactly the video-only one that was hardware verified.
 	modprobe open_sys_config sensors=sns0=$SNS_TYPE0,sns1=$SNS_TYPE1 board=$BOARD ir_auto=$IR_AUTO
 	insert_osal
 	modprobe open_base logmpp_show=${DEBUG}
@@ -185,6 +204,7 @@ insert_cv610_streamer_ko() {
 	modprobe open_rc
 	modprobe open_venc g_venc_max_chn_num=8
 	modprobe open_h265e
+	[ "${CV610_AUDIO:-0}" = "1" ] && insert_cv610_streamer_capture_audio
 	modprobe open_sensor_i2c
 	modprobe open_mipi_rx
 	modprobe open_user
@@ -194,6 +214,7 @@ remove_cv610_streamer_ko() {
 	rmmod open_user
 	rmmod open_mipi_rx
 	rmmod open_sensor_i2c
+	remove_cv610_streamer_capture_audio
 	rmmod open_h265e
 	rmmod open_venc
 	rmmod open_rc
