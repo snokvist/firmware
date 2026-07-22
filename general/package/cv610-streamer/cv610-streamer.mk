@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-CV610_STREAMER_VERSION = 7609e4aa672a22a607bc46bae3477a357e4db197
+CV610_STREAMER_VERSION = 3f228d8ecd922a313851cf10277c13225e61f3a6
 CV610_STREAMER_SITE = https://github.com/snokvist/hi3519dv500-openipc-venc.git
 CV610_STREAMER_SITE_METHOD = git
 CV610_STREAMER_LICENSE = MIT
@@ -34,6 +34,8 @@ define CV610_STREAMER_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/bin/cv610_streamer
 	$(INSTALL) -D -m 755 $(CV610_STREAMER_APP_DIR)/cv610_venc_ctl \
 		$(TARGET_DIR)/usr/bin/cv610_venc_ctl
+	$(INSTALL) -D -m 755 $(CV610_STREAMER_APP_DIR)/cv610_isp_ctl \
+		$(TARGET_DIR)/usr/bin/cv610_isp_ctl
 	$(INSTALL) -D -m 755 $(CV610_STREAMER_SENSOR_DIR)/libsns_imx662.so \
 		$(TARGET_DIR)/usr/lib/sensors/libsns_imx662.so
 	$(INSTALL) -D -m 644 $(CV610_STREAMER_PKGDIR)/files/cv610-streamer.conf \
