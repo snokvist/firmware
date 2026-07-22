@@ -1,0 +1,76 @@
+#!/bin/sh
+
+DAEMON=/usr/bin/cv610_streamer
+NAME=cv610-streamer
+PIDFILE=/var/run/$NAME.pid
+CONFIG=/etc/cv610-streamer.conf
+LOGFILE=/var/log/$NAME.log
+
+[ -r "$CONFIG" ] && . "$CONFIG"
+
+start() {
+	if [ "${CV610_STREAMER_ENABLED:-0}" != "1" ]; then
+		echo "$NAME disabled"
+		return 0
+	fi
+	if [ -z "$CV610_STREAMER_DESTINATION" ]; then
+		echo "$NAME: CV610_STREAMER_DESTINATION is empty"
+		return 1
+	fi
+
+	set -- -t 0 -u "$CV610_STREAMER_DESTINATION" \
+		-B "${CV610_STREAMER_BITRATE_KBPS:-3000}" \
+		-g "${CV610_STREAMER_GOP:-300}" \
+		-Q "${CV610_STREAMER_IP_QP_DELTA:--4}" \
+		-f "${CV610_STREAMER_FPS:-30}" \
+		-m "${CV610_STREAMER_MAX_PAYLOAD:-1400}"
+	[ -n "$CV610_STREAMER_IRCUT" ] && set -- "$@" -c "$CV610_STREAMER_IRCUT"
+
+	echo -n "Starting $NAME: "
+	: > "$LOGFILE"
+	start-stop-daemon -S -m -q -p "$PIDFILE" -x "$DAEMON" -- "$@" \
+		>>"$LOGFILE" 2>&1 &
+	sleep 0.1
+	if [ -r "$PIDFILE" ] && start-stop-daemon -K -t -q -p "$PIDFILE"; then
+		echo OK
+	else
+		echo FAIL
+		sed -n '1,80p' "$LOGFILE"
+		return 1
+	fi
+}
+
+stop() {
+	pid=""
+	[ -r "$PIDFILE" ] && read -r pid < "$PIDFILE"
+	echo -n "Stopping $NAME: "
+	start-stop-daemon -K -q -p "$PIDFILE"
+	if [ $? -eq 0 ]; then
+		# SIGTERM asks the streamer to leave its select loop and tear down
+		# VENC/ISP/VI/SYS. Do not race the next owner into ISP ALREADY_INIT.
+		i=0
+		while [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && [ "$i" -lt 50 ]; do
+			sleep 0.1
+			i=$((i + 1))
+		done
+		rm -f "$PIDFILE"
+		echo OK
+	else
+		echo FAIL
+		return 1
+	fi
+}
+
+case "$1" in
+	start|stop)
+		"$1"
+		;;
+	restart)
+		stop
+		start
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart}"
+		exit 1
+		;;
+esac

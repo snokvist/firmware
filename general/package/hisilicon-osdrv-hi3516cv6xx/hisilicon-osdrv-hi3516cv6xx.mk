@@ -64,6 +64,11 @@ define HISILICON_OSDRV_HI3516CV6XX_INSTALL_TARGET_CMDS
 	$(INSTALL) -m 755 -d $(TARGET_DIR)/usr/bin
 	$(INSTALL) -m 755 -t $(TARGET_DIR)/usr/bin $(HISILICON_OSDRV_HI3516CV6XX_PKGDIR)/files/script/load*
 
+	# load_hisilicon reads the OS/MMZ memory split from the u-boot env
+	# (totalmem/osmem) via fw_printenv, which needs this config to exist.
+	$(INSTALL) -m 755 -d $(TARGET_DIR)/etc
+	$(INSTALL) -m 644 -t $(TARGET_DIR)/etc $(HISILICON_OSDRV_HI3516CV6XX_PKGDIR)/files/fw_env.config
+
 	$(INSTALL) -m 755 -d $(TARGET_DIR)/usr/lib
 	$(foreach lib,$(HISILICON_OSDRV_HI3516CV6XX_MPP_LIBS), \
 		$(INSTALL) -m 644 -t $(TARGET_DIR)/usr/lib $(HISILICON_OSDRV_HI3516CV6XX_PKGDIR)/files/lib/$(lib) ; \

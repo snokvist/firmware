@@ -9,6 +9,11 @@ SYS_PROFILE=0
 IR_AUTO=0
 DEBUG=1
 BOARD=dmeb_qfn; # dmeb_qfn dmeb_bga
+MPP_MODULE_PROFILE=full
+
+# Board/development images can select a fixed sensor and a smaller module
+# profile without modifying this family-wide loader.
+[ -r /etc/load-hisilicon.conf ] && . /etc/load-hisilicon.conf
 
 # SoC detect
 chipid=$(ipcinfo --chip-name)
@@ -153,12 +158,59 @@ insert_ko() {
 
 	insert_audio
 	modprobe open_mipi_rx
-	# modprobe open_user
+	modprobe open_user
 	case ${socmodel} in 20s|20g|00s|00g) modprobe open_aiisp ;; esac
 	# modprobe open_uvc
 	modprobe open_pm
 	modprobe open_wdt
 	insert_security_subsys
+}
+
+insert_cv610_streamer_ko() {
+	# Minimal hardware-verified path for the IMX662 H.265 RTP development
+	# image. Avoid unrelated accelerators, audio, PM, and watchdog drivers.
+	modprobe open_sys_config sensors=sns0=$SNS_TYPE0,sns1=$SNS_TYPE1 board=$BOARD ir_auto=$IR_AUTO
+	insert_osal
+	modprobe open_base logmpp_show=${DEBUG}
+	modprobe open_vb
+	modprobe open_vca
+	modprobe open_sys profile=$SYS_PROFILE
+	modprobe open_rgn
+	modprobe open_vpp
+	modprobe open_vgs
+	modprobe open_vpss
+	modprobe open_vi
+	modprobe open_isp
+	modprobe open_chnl
+	modprobe open_rc
+	modprobe open_venc g_venc_max_chn_num=8
+	modprobe open_h265e
+	modprobe open_sensor_i2c
+	modprobe open_mipi_rx
+	modprobe open_user
+}
+
+remove_cv610_streamer_ko() {
+	rmmod open_user
+	rmmod open_mipi_rx
+	rmmod open_sensor_i2c
+	rmmod open_h265e
+	rmmod open_venc
+	rmmod open_rc
+	rmmod open_chnl
+	rmmod open_isp
+	rmmod open_vi
+	rmmod open_vpss
+	rmmod open_vgs
+	rmmod open_vpp
+	rmmod open_rgn
+	rmmod open_sys
+	rmmod open_vca
+	rmmod open_vb
+	rmmod open_base
+	rmmod open_mmz
+	rmmod open_osal
+	rmmod open_sys_config
 }
 
 remove_ko() {
@@ -167,7 +219,7 @@ remove_ko() {
 	rmmod open_pm
 	# rmmod open_uvc
 	rmmod open_aiisp &> /dev/null
-	# rmmod open_user
+	rmmod open_user
 	rmmod open_mipi_rx
 
 	remove_audio
@@ -339,7 +391,11 @@ parse_arg $@
 
 #######################Action###############################
 if [ $b_arg_remove -eq 1 ]; then
-	remove_ko;
+	if [ "$MPP_MODULE_PROFILE" = "cv610_streamer" ]; then
+		remove_cv610_streamer_ko
+	else
+		remove_ko
+	fi
 fi
 #######################parse arg end########################
 if [ $os_mem_size -ge $mem_total ]; then
@@ -371,6 +427,10 @@ if [ "$SENSOR" = "unknown" ]; then
 else
 	if [ $b_arg_modprobe -eq 1 ]; then
 		cd /lib/modules/$(uname -r)/hisilicon
-		insert_ko
+		if [ "$MPP_MODULE_PROFILE" = "cv610_streamer" ]; then
+			insert_cv610_streamer_ko
+		else
+			insert_ko
+		fi
 	fi
 fi
