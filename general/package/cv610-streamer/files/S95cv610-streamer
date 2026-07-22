@@ -24,6 +24,7 @@ start() {
 		-Q "${CV610_STREAMER_IP_QP_DELTA:--4}" \
 		-f "${CV610_STREAMER_FPS:-30}" \
 		-m "${CV610_STREAMER_MAX_PAYLOAD:-1400}"
+	[ "${CV610_STREAMER_DEBUG_OSD:-0}" = "1" ] && set -- "$@" -D
 	[ -n "$CV610_STREAMER_IRCUT" ] && set -- "$@" -c "$CV610_STREAMER_IRCUT"
 
 	echo -n "Starting $NAME: "

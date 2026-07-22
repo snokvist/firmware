@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-CV610_STREAMER_VERSION = 0016322dcf8e6f5cbd5ebb87f8289e46bf6d78db
+CV610_STREAMER_VERSION = 7609e4aa672a22a607bc46bae3477a357e4db197
 CV610_STREAMER_SITE = https://github.com/snokvist/hi3519dv500-openipc-venc.git
 CV610_STREAMER_SITE_METHOD = git
 CV610_STREAMER_LICENSE = MIT
