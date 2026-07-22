@@ -22,7 +22,7 @@ start() {
 		-B "${CV610_STREAMER_BITRATE_KBPS:-3000}" \
 		-g "${CV610_STREAMER_GOP:-300}" \
 		-Q "${CV610_STREAMER_IP_QP_DELTA:--4}" \
-		-f "${CV610_STREAMER_FPS:-30}" \
+		-f "${CV610_STREAMER_FPS:-60}" \
 		-m "${CV610_STREAMER_MAX_PAYLOAD:-1400}"
 	[ "${CV610_STREAMER_DEBUG_OSD:-0}" = "1" ] && set -- "$@" -D
 	[ -n "$CV610_STREAMER_IRCUT" ] && set -- "$@" -c "$CV610_STREAMER_IRCUT"
