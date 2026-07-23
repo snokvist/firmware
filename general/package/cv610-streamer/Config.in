@@ -1,0 +1,10 @@
+config BR2_PACKAGE_CV610_STREAMER
+	bool "cv610-streamer"
+	depends on BR2_PACKAGE_HISILICON_OPENSDK
+	depends on BR2_PACKAGE_HISILICON_OSDRV_HI3516CV6XX
+	help
+	  Lightweight IMX662 -> VI -> ISP -> H.265 CBR -> RTP proof of
+	  concept for Hi3516CV610. This development package also installs a
+	  configurable init service that streams continuously after boot.
+
+	  https://github.com/snokvist/hi3519dv500-openipc-venc

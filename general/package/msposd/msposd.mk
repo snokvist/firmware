@@ -6,6 +6,7 @@
 
 MSPOSD_SITE = $(call github,openipc,msposd,$(MSPOSD_VERSION))
 MSPOSD_VERSION = HEAD
+MSPOSD_DEPENDENCIES = libevent-openipc
 
 ifeq ($(OPENIPC_SOC_FAMILY),gk7205v200)
 	MSPOSD_FAMILY = goke
@@ -25,7 +26,7 @@ else
 endif
 
 define MSPOSD_BUILD_CMDS
-	$(MAKE) CC=$(TARGET_CC) TOOLCHAIN=$(STAGING_DIR) DRV=$(MSPOSD_OSDRV)files/lib $(MSPOSD_FAMILY) OUTPUT=$(@D)/msposd -C $(@D)
+	$(MAKE) CC=$(TARGET_CC) TOOLCHAIN=$(STAGING_DIR) DRV=$(MSPOSD_OSDRV)/files/lib $(MSPOSD_FAMILY) OUTPUT=$(@D)/msposd -C $(@D)
 endef
 
 define MSPOSD_INSTALL_TARGET_CMDS
@@ -42,5 +43,16 @@ define MSPOSD_INSTALL_TARGET_CMDS
 	$(INSTALL) -m 644 -t $(TARGET_DIR)/usr/share/fonts $(@D)/fonts/font_ardu_hd.png
 	$(INSTALL) -m 644 -t $(TARGET_DIR)/etc $(@D)/vtxmenu.ini
 endef
+
+define MSPOSD_INSTALL_LIBRARIES
+	$(INSTALL) -m 755 -d $(TARGET_DIR)/usr/lib
+	$(INSTALL) -m 644 -t $(TARGET_DIR)/usr/lib $(MSPOSD_OSDRV)/files/lib/libcam_os_wrapper.so
+	$(INSTALL) -m 644 -t $(TARGET_DIR)/usr/lib $(MSPOSD_OSDRV)/files/lib/libmi_rgn.so
+	$(INSTALL) -m 644 -t $(TARGET_DIR)/usr/lib $(MSPOSD_OSDRV)/files/lib/libmi_sys.so
+endef
+
+ifeq ($(OPENIPC_SOC_VENDOR),sigmastar)
+MSPOSD_POST_INSTALL_TARGET_HOOKS += MSPOSD_INSTALL_LIBRARIES
+endif
 
 $(eval $(generic-package))
