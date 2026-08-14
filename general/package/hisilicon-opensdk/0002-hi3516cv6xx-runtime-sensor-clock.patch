@@ -30,12 +30,11 @@ their nominal rate (ratio 1.000-1.002), where previously only the mode
 matching the boot profile was correct.
 
 ---
- kernel/sys_config/hi3516cv6xx/sys_cfg.c | 72 +++++++++++++++++++++++++
- 1 file changed, 72 insertions(+)
-
+ kernel/sys_config/hi3516cv6xx/sys_cfg.c | 77 +++++++++++++++++++++++++
+ 1 file changed, 77 insertions(+)
 --- a/kernel/sys_config/hi3516cv6xx/sys_cfg.c
 +++ b/kernel/sys_config/hi3516cv6xx/sys_cfg.c
-@@ -271,6 +271,80 @@
+@@ -271,6 +271,83 @@
      sys_writel(g_reg_crg_base, offset, clock);
  }
  
@@ -99,6 +98,9 @@ matching the boot profile was correct.
 +    return 0;
 +}
 +
++/* The last value accepted by the setter, not a read-back: the register is
++ * also written by sensor_cfg() at insmod and by the MIPI clock enable, so
++ * this reports what was requested here and 0 if nothing was. */
 +static int sns0_clk_hz_get(char *buffer, const struct kernel_param *kp)
 +{
 +    (void)kp;
@@ -111,7 +113,7 @@ matching the boot profile was correct.
 +};
 +
 +module_param_cb(sns0_clk_hz, &sns0_clk_hz_ops, NULL, 0600);
-+MODULE_PARM_DESC(sns0_clk_hz, "sensor0 MCLK in Hz: 24000000, 27000000 or 37125000");
++MODULE_PARM_DESC(sns0_clk_hz, "sensor0 MCLK in Hz: 27000000 or 37125000");
 +
  static unsigned int parse_sensor_clock(const char *name, unsigned int name_len)
  {
