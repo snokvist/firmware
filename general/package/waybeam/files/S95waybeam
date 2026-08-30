@@ -1,0 +1,84 @@
+#!/bin/sh
+
+DAEMON="waybeam"
+RESPAWN="waybeam-resp"
+WATCHDOG="waybeam-wd"
+DAEMON_PATH="/usr/bin/waybeam"
+LOG_PATH="/tmp/waybeam.log"
+
+# Seconds to wait for a graceful exit. waybeam's teardown releases SigmaStar
+# kernel state and can legitimately take ~12s when the MI flush is slow, so
+# this needs real headroom -- a short window turns a slow shutdown into a
+# reported failure.
+STOP_TIMEOUT_S=30
+
+# waybeam forks a respawn child (comm "waybeam-resp") on an API restart and a
+# watchdog ("waybeam-wd"). pidof and killall match by comm, so every restart
+# path must cover all three names, otherwise stop() returns while a helper is
+# still alive and the next start() trips the duplicate-instance check.
+still_running() {
+	pidof "$DAEMON" "$RESPAWN" "$WATCHDOG" >/dev/null 2>&1
+}
+
+wait_exit() {
+	i=0
+	while [ $i -lt $((STOP_TIMEOUT_S * 2)) ]; do
+		still_running || return 0
+		sleep 0.5
+		i=$((i + 1))
+	done
+	return 1
+}
+
+start() {
+	if still_running; then
+		echo "$DAEMON already running"
+		return 0
+	fi
+	echo -n "Starting $DAEMON: "
+	# waybeam reads /etc/waybeam.json from a fixed path; it has no -c flag.
+	"$DAEMON_PATH" > "$LOG_PATH" 2>&1 &
+	i=0
+	while [ $i -lt 10 ]; do
+		sleep 0.3
+		still_running && { echo "OK"; return 0; }
+		i=$((i + 1))
+	done
+	echo "FAILED (crashed at init or lost the duplicate-instance check, see $LOG_PATH)"
+	return 1
+}
+
+stop() {
+	echo -n "Stopping $DAEMON: "
+	killall "$DAEMON" "$RESPAWN" "$WATCHDOG" 2>/dev/null
+	if wait_exit; then
+		echo "OK"
+		return 0
+	fi
+	# Deliberately no SIGKILL escalation. waybeam releases SigmaStar kernel
+	# state on its way out (MI_SYS_Exit / MI_VENC_DestroyChn); SIGKILL skips
+	# that and leaves the MI channel and binding slots occupied, and nothing
+	# in userspace can reclaim them. The next start then binds a half-open
+	# channel whose symptom is "no encoder data received" until the board is
+	# power-cycled -- a bad place for an init script to leave a camera, since
+	# restart is what people run when they cannot reach the hardware.
+	#
+	# Reporting the failure instead keeps the still-running instance
+	# streaming, and "restart) stop && start" stops a second instance from
+	# being started on top of wedged state. If the daemon is genuinely hung
+	# the SDK is already stuck, and a reboot -- which waybeam's own teardown
+	# watchdog performs when its MI flush wedges -- is the recovery that
+	# returns the board to a known state.
+	echo "FAILED (still running after ${STOP_TIMEOUT_S}s; not forcing, SIGKILL wedges the SigmaStar MI state)"
+	return 1
+}
+
+case "$1" in
+	start)   start ;;
+	stop)    stop ;;
+	restart) stop && start ;;
+	*)
+		echo "Usage: $0 {start|stop|restart}"
+		exit 1
+		;;
+esac

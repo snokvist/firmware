@@ -6,6 +6,21 @@ BR_CONF = $(TARGET)/openipc_defconfig
 TARGET ?= $(PWD)/output
 export CMAKE_POLICY_VERSION_MINIMUM := 3.5
 
+# GCC 15 defaults to -std=gnu23, where an empty parameter list means "takes no
+# arguments" rather than "unspecified". Several host packages Buildroot pins
+# here predate that and their configure probes stop compiling: gmp 6.3.0 fails
+# its compiler test with "too many arguments to function 'g'", which surfaces as
+# the far less helpful "could not find a working compiler" and halts any
+# `make toolchain` on a current distro. Pin the dialect rather than carry a
+# version bump for every affected host package. Applies only to host C builds,
+# is overridable from the environment, and is a no-op on hosts whose GCC still
+# defaults to gnu17.
+#
+# "Applies only to host C builds" is what the prepare: rule below has to make
+# true -- Buildroot appends HOST_CFLAGS to HOST_CXXFLAGS wholesale.
+HOST_CFLAGS ?= -O2 -std=gnu17
+export HOST_CFLAGS
+
 CONFIG = $(error variable BOARD not defined)
 TIMER := $(shell date +%s)
 
@@ -50,6 +65,23 @@ prepare:
 			$(TARGET)/buildroot-$(BR_VER)/linux/Config.in || \
 		sed -i '/source "linux\/Config.ext.in"/a source "$$BR2_EXTERNAL_GENERAL_PATH/linux/Config.ext.in"' \
 			$(TARGET)/buildroot-$(BR_VER)/linux/Config.in; \
+	fi
+	@# Keep the C dialect pinned at the top of this file out of host C++ builds.
+	@# package/Makefile.in does `HOST_CXXFLAGS += $$(HOST_CFLAGS)`, so -std=gnu17
+	@# reaches every host C++ compile, where it is not a C++ dialect at all: g++
+	@# ignores it and prints "command-line option '-std=gnu17' is valid for
+	@# C/ObjC but not for C++". Compilation still succeeds -- what does not is
+	@# CMake, whose cm_check_cxx_feature discards any feature whose try_compile
+	@# output contains the word "warning" (Source/Checks/cm_cxx_features.cmake).
+	@# host-cmake therefore decides the compiler has no std::unique_ptr and
+	@# aborts its own configure, taking every `make BOARD=...` with it.
+	@# Filtering -std= rather than that one value so a C dialect set from the
+	@# environment does not reintroduce this.
+	@if test -f $(TARGET)/buildroot-$(BR_VER)/package/Makefile.in; then \
+		grep -qF 'filter-out -std=%' \
+			$(TARGET)/buildroot-$(BR_VER)/package/Makefile.in || \
+		sed -i 's|^HOST_CXXFLAGS += \$$(HOST_CFLAGS)$$|HOST_CXXFLAGS += $$(filter-out -std=%,$$(HOST_CFLAGS))|' \
+			$(TARGET)/buildroot-$(BR_VER)/package/Makefile.in; \
 	fi
 
 help:
@@ -231,12 +263,20 @@ define PREPARE_REPACK
 	$(call REPACK_FIRMWARE,$(1),$(3),$(5))
 endef
 
+# The headroom line exists because "fits" and "only just fits" read the same in
+# a green build. hi3519v101_lite sat at exactly 5120KB of a 5120KB cap for weeks
+# -- reported, passing, and one 34-line edit from the overflow it hit on
+# 2026-08-18. 32KB is the threshold because what tips these boards is a change
+# to the shared overlay, which is single-digit KB at a time; a board under that
+# is a couple of ordinary commits from red, and a board over it is not.
 define CHECK_SIZE
 	$(eval FILE_SIZE = $(shell expr $(shell stat -c %s $(TARGET)/images/$(1) || echo 0) / 1024))
 	if test $(FILE_SIZE) -eq 0; then exit 1; fi
 	echo - $(1): [$(FILE_SIZE)KB/$(2)KB]
 	if test $(FILE_SIZE) -gt $(2); then \
 		echo -- size exceeded by: $(shell expr $(FILE_SIZE) - $(2))KB; exit 1; fi
+	if test $(shell expr $(2) - $(FILE_SIZE)) -lt 32; then \
+		echo -- headroom warning: $(1) has $(shell expr $(2) - $(FILE_SIZE))KB left of $(2)KB; fi
 endef
 
 define REPACK_FIRMWARE

@@ -7,6 +7,10 @@ if echo "$ARCH" | grep -q mips; then
 fi
 
 case "$CMD" in
+	api)
+		curl -G 'http://localhost/api/v1/set' --data-urlencode "$@"
+		;;
+
 	cli)
 		yaml-cli -i /etc/majestic.yaml "$@"
 		;;
@@ -43,6 +47,16 @@ case "$CMD" in
 					echo "Warning. Wired network interface has default MAC address, please change it."
 				fi
 			fi
+		fi
+		;;
+
+	set_mac)
+		if fw_printenv -n ethaddr >/dev/null 2>&1; then
+			echo "ethaddr: $(fw_printenv -n ethaddr)"
+		else
+			mac=$(od -An -tx1 -N5 /dev/urandom | tr -d ' ' | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\)$/02:\1:\2:\3:\4:\5/')
+			fw_setenv ethaddr "$mac"
+			echo "ethaddr: $mac"
 		fi
 		;;
 
