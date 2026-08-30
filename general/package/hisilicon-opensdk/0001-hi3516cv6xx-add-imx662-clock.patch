@@ -1,0 +1,29 @@
+From: Waybeam CV610 bring-up <devnull@example.com>
+Subject: [PATCH] sys_config: add IMX662 37.125 MHz sensor clock
+
+The IMX662 mode uses HMAX=1980 with a 37.125 MHz input clock. Without an
+explicit sys_config entry the clock register is programmed with zero; using
+the SC4336P fallback instead supplies 27 MHz and yields only 21.8 fps.
+
+---
+ kernel/sys_config/hi3516cv6xx/sys_cfg.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/kernel/sys_config/hi3516cv6xx/sys_cfg.c b/kernel/sys_config/hi3516cv6xx/sys_cfg.c
+index 10a3eb0..517f6a9 100644
+--- a/kernel/sys_config/hi3516cv6xx/sys_cfg.c
++++ b/kernel/sys_config/hi3516cv6xx/sys_cfg.c
+@@ -28,1 +28,2 @@
+ #define MIPI_AD "mipi_ad"
++#define SENSOR_NAME_IMX662 "imx662"
+@@ -293,6 +294,9 @@ static unsigned int parse_sensor_clock(const char *name, unsigned int name_len)
+     } else if ((strncmp(SENSOR_NAME_OS04D10, name, len) == 0)) {
+         clock = 0x4001;  /* 24M */
+     } else if (strncmp(MIPI_AD, name, len) == 0) {
+         clock = 0x8010; /* 37.125M */
++    } else if (strncmp(SENSOR_NAME_IMX662, name, len) == 0) {
++        /* HMAX=1980 and VMAX=1250 produce 30 fps at this input clock. */
++        clock = 0x8010; /* 37.125M */
+     } else if ((strncmp("bt656", name, len) == 0) ||
+                (strncmp("bt1120", name, len) == 0) ||
+                (strncmp("bt601", name, len) == 0)) {

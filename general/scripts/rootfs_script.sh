@@ -85,6 +85,14 @@ if [ -f "${LATE_POST_BUILD_HOOKS}" ]; then
 	done < "${LATE_POST_BUILD_HOOKS}"
 fi
 
+# CV6xx uses a modular USB mass-storage driver to keep its fixed kernel
+# partition unchanged. BusyBox mdev does not resolve modaliases on this image,
+# so arrange for S35modules to load it before S38mdev scans block devices.
+if [ "${OPENIPC_SOC_FAMILY}" = "hi3516cv6xx" ]; then
+	grep -qxF 'usb-storage' "${TARGET_DIR}/etc/modules" || \
+		printf '%s\n' 'usb-storage' >> "${TARGET_DIR}/etc/modules"
+fi
+
 # Comments are worth writing and worth keeping in git; they are not worth
 # flashing. sysupgrade alone had grown to 52KB, 57% of it comment, and on
 # 2026-08-18 it pushed hi3519v101_lite 4KB past its 5120KB rootfs cap -- a board

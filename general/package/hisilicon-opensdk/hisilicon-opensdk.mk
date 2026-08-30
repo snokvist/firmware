@@ -605,6 +605,17 @@ endef
 HISILICON_OPENSDK_TARGET_FINALIZE_HOOKS += HISILICON_OPENSDK_FINALIZE_MODULES
 endif
 
+# CV6xx FPV images are USB-host-only. The loader never inserts open_uvc, and
+# the module cannot resolve uvc_recv_pack once the kernel UVC gadget support is
+# disabled, so do not leave a known-unloadable module in the rootfs.
+ifeq ($(OPENIPC_SOC_FAMILY),hi3516cv6xx)
+define HISILICON_OPENSDK_SKIP_UNUSED_CV6XX_UVC
+	rm -f $(TARGET_DIR)/lib/modules/*/hisilicon/open_uvc.ko
+	$(LINUX_RUN_DEPMOD)
+endef
+HISILICON_OPENSDK_TARGET_FINALIZE_HOOKS += HISILICON_OPENSDK_SKIP_UNUSED_CV6XX_UVC
+endif
+
 # For gk7205v200: peripherals (osal, isp, mipi_rx, sys_config, sensor_*,
 # pwm, wdt, piris, hwrng, adc) stay in /lib/modules/<kver>/extra/ as
 # open_*.ko — load_goke `modprobe open_<mod>` finds them there. The V4
