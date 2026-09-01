@@ -50,11 +50,22 @@ Two subtleties, learned the hard way, encoded in `mksplicedboot.sh`:
 
 - `mksplicedboot.sh` — grafts a known-good GSL + reginfo (e.g. from a vendor flash dump,
   bytes 0..0x9440) onto an OpenIPC u-boot stage, patching the length words. Defaults
-  produce the configuration verified to boot Linux on the K662C6S. Obsolete once an
-  upstream release ships the fixed gsl.bin.
+  produce the configuration verified to boot Linux on the K662C6S. The current
+  u-boot-hi3516cv6xx tree already carries the fixed gsl.bin, so splicing is only
+  needed for older or vendor boot dumps.
 - `mkfullimage.sh` — assembles a complete externally-flashable 16 MB NOR image from a
   boot binary + `firmware.bin` (post-image.sh only emits the sysupgrade payload, which
   contains no bootloader). Populates the environment (mandatory: this u-boot has no
   compiled-in bootcmd/bootargs), derives the kernel partition size from the FIT header,
   and includes the three settings this board needs: `init=/init`, `totalmem=128M` /
   `osmem=64M`, and a kernel partition large enough for the fitImage.
+
+For the waybeam_lite-ng build, the top-level Makefile keeps this separation explicit:
+
+```
+make BOARD=hi3516cv6xx_waybeam_lite_ng TARGET=output-waybeam-ng UBOOT=../u-boot-hi3516cv6xx/output/boot-hi3516cv610-20s-nor.bin fullimage
+```
+
+fullimage rejects a pre-fix boot blob by checking for the fixed GSL marker, and
+defaults the U-Boot environment to totalmem=128M, osmem=64M, mem=64M, and
+init=/init.
