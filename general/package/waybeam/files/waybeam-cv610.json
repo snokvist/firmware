@@ -1,0 +1,61 @@
+{
+  "system": {
+    "webPort": 80,
+    "overclockLevel": 1,
+    "verbose": true
+  },
+  "video0": {
+    "rcMode": "cbr",
+    "fps": 100,
+    "size": "1280x720",
+    "bitrate": 2829,
+    "gopSize": 2.0,
+    "sliceCount": 17,
+    "resilience": "racing",
+    "intraRefreshQp": 0,
+    "framing": "off"
+  },
+  "outgoing": {
+    "enabled": true,
+    "server": "udp://192.168.1.5:5600",
+    "streamMode": "rtp",
+    "maxPayloadSize": 1400,
+    "connectedUdp": false,
+    "allowUnixEncoderStall": false,
+    "audioPort": 5611
+  },
+  "audio": {
+    "enabled": true,
+    "sampleRate": 48000,
+    "channels": 1,
+    "codec": "opus",
+    "volume": 80,
+    "mute": false
+  },
+  "record": {
+    "enabled": false,
+    "dir": "/mnt/mmcblk0p1",
+    "format": "ts",
+    "mode": "mirror",
+    "maxSeconds": 300,
+    "maxMB": 500
+  },
+  "snapshot": {
+    "enabled": true,
+    "quality": 80,
+    "channel": 7
+  },
+  "discovery": {
+    "enabled": false,
+    "serviceType": "_waybeam-venc._tcp",
+    "name": "cv610-waybeam-lite-ng",
+    "bareAlias": false
+  },
+  "fpv": {
+    "roiEnabled": true,
+    "roiQp": -10,
+    "roiSteps": 4,
+    "roiCenter": 0.6,
+    "noiseLevel": 0
+  }
+}

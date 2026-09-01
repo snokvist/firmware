@@ -2,6 +2,10 @@
 
 case "$1" in
 	start)
+		if [ -x /usr/bin/waybeam ]; then
+			echo "Skipping vendor modules; Waybeam will load CV610 modules..."
+			exit 0
+		fi
 		echo "Loading vendor modules..."
 		vendor=$(ipcinfo -v)
 		load_"$vendor" -i

@@ -48,7 +48,7 @@ usage() {
 	Usage: $0 --uboot <file> --firmware <file> --out <file> [options]
 
 	  --uboot FILE      bootloader blob written at offset 0
-	  --firmware FILE   firmware.bin.hi3516cv6xx from output/images
+	  --firmware FILE   firmware.bin from output/images
 	  --out FILE        image to write
 	  --flash-size MB   total NOR size, default ${FLASH_SIZE}
 	  --totalmem SIZE   physical DDR, default ${TOTALMEM}
@@ -66,10 +66,9 @@ usage() {
 	                    only on an image you are flashing externally, since
 	                    changing it invalidates in-place sysupgrades.
 
-	Note: OpenIPC's published boot-hi3516cv610-*-nor.bin has been observed to
-	hang before printing its banner on real silicon (it is built as a QEMU
-	smoke-gate artifact). Until that is fixed, pass the board's own vendor
-	u-boot, extracted from a full flash dump:
+	Note: the boot blob must come from the fixed u-boot-hi3516cv6xx tree
+	(ddr param version 20250416). The stock pre-fix blob is rejected.
+	If using a known-good boot blob extracted from a full flash dump:
 	  dd if=dump.bin of=vendor-uboot.bin bs=1 count=262144
 	EOF
 }
@@ -98,6 +97,14 @@ fi
 for f in "${UBOOT}" "${FIRMWARE}"; do
 	[ -r "$f" ] || { echo "cannot read $f" >&2; exit 1; }
 done
+
+# The stock OpenIPC CV610 boot blob is known to hang on real silicon during
+# DDR training. Require the fixed GSL from the final u-boot-hi3516cv6xx tree;
+# this marker is embedded in image_tool/input/gsl.bin and survives packaging.
+grep -a -q 'ddr param version 20250416' "${UBOOT}" || {
+	echo "u-boot does not contain the fixed CV610 GSL (ddr param version 20250416)" >&2
+	exit 1
+}
 
 ENV_OFFSET=$((0x40000))
 ENV_SIZE=$((0x10000))
@@ -198,6 +205,7 @@ md5sum "${OUT}" > "${OUT}.md5"
 
 cat <<-EOF
 	Wrote ${OUT} (${FLASH_SIZE} MB)
+	  verified   fixed CV610 GSL / 128M DDR boot image
 	  u-boot    0x00000  ${UBOOT_SIZE} bytes
 	  env       0x$(printf %05x ${ENV_OFFSET})  ${ENV_SIZE} bytes
 	  firmware  0x$(printf %05x ${FW_OFFSET})  ${FW_SIZE} bytes (fitImage ${FIT_SIZE})

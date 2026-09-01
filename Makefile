@@ -4,6 +4,9 @@ BR_LINK = https://github.com/buildroot/buildroot/archive
 BR_FILE = /tmp/buildroot-$(BR_VER).tar.gz
 BR_CONF = $(TARGET)/openipc_defconfig
 TARGET ?= $(PWD)/output
+override TARGET := $(abspath $(TARGET))
+CV6XX_BOARD_DIR := $(PWD)/br-ext-chip-hisilicon/board/hi3516cv6xx
+UBOOT ?= $(PWD)/../u-boot-hi3516cv6xx/output/boot-hi3516cv610-20s-nor.bin
 export CMAKE_POLICY_VERSION_MINIMUM := 3.5
 
 # GCC 15 defaults to -std=gnu23, where an empty parameter list means "takes no
@@ -44,6 +47,16 @@ all: repack-final timer
 
 build: defconfig
 	@$(BR_MAKE) all -j$(shell nproc)
+
+fullimage: build
+ifeq ($(BR2_OPENIPC_SOC_FAMILY),"hi3516cv6xx")
+	@$(CV6XX_BOARD_DIR)/mkfullimage.sh \
+		--uboot "$(UBOOT)" \
+		--firmware "$(TARGET)/images/firmware.bin" \
+		--out "$(TARGET)/images/openipc.$(BR2_OPENIPC_SOC_MODEL)-$(BR2_OPENIPC_VARIANT)-20s-nor-FULL.bin"
+else
+	@echo "fullimage is only supported for hi3516cv6xx" >&2; exit 1
+endif
 
 br-%: defconfig
 	@$(BR_MAKE) $(subst br-,,$@) -j$(shell nproc)
@@ -91,7 +104,8 @@ help:
 	- make clean - remove defconfig and target folder\n \
 	- make package - list available packages\n \
 	- make distclean - remove buildroot and output folder\n \
-	- make br-linux - build linux kernel only\n\n"
+	- make br-linux - build linux kernel only\n \
+	- make fullimage BOARD=... UBOOT=/path/to/fixed-u-boot.bin - build a flashable Hi3516CV6xx NOR image\n\n"
 
 list:
 	@ls -1 br-ext-chip-*/configs
