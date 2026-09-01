@@ -1,0 +1,27 @@
+From: Waybeam CV610 bring-up <devnull@example.com>
+Subject: [PATCH] sys_config: enable UART2 on the CV610 module connector
+
+The CV610 module used for waybeam exposes UART2 on the GPIO1_1/GPIO7_6
+connector pair.  On this package both pads select UART2 with IOCFG value
+0x1105; the reference KOLB route uses a different pair and must remain
+unchanged.
+
+The route was verified on the target module with a physical TX-to-RX
+loopback at 115200 baud (the string ``U2_LOOP`` was received unchanged).
+
+---
+ kernel/sys_config/hi3516cv6xx/pin_mux.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+--- a/kernel/sys_config/hi3516cv6xx/pin_mux.c
++++ b/kernel/sys_config/hi3516cv6xx/pin_mux.c
+@@ -334,6 +334,11 @@ static void uart2_pin_mux(int board_type)
+         sys_writel(iocfg_base, 0x0010, 0x1102); /* UART2_TXD */
+         sys_writel(iocfg_base, 0x0014, 0x1102); /* UART2_RXD */
+     }
++    if (board_type == BOARD_DMEB_QFN) {
++        /* CV610 module UART connector: GPIO1_1/GPIO7_6 */
++        sys_writel(iocfg_base, 0x0048, 0x1105); /* UART2_RXD */
++        sys_writel(iocfg_base, 0x004c, 0x1105); /* UART2_TXD */
++    }
+ }
