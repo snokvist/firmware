@@ -4,11 +4,15 @@
 #
 ################################################################################
 
-WAYBEAM_VERSION = c49d22c6071fc3744c9cf4e4c5d2ae956898d9b3
+WAYBEAM_VERSION = 0c660fc5d301bfa2235a6a7b5da40480fa0c7a3f
 WAYBEAM_SITE = https://github.com/OpenIPC/waybeam.git
 WAYBEAM_SITE_METHOD = git
 WAYBEAM_GIT_SUBMODULES = YES
-WAYBEAM_LICENSE = MIT
+# The waybeam sources are MIT.  files/libbin.so is a third-party HiSilicon PQ
+# library redistributed unmodified for the CV610 backend; it is not ours and
+# not MIT, so the declaration names both rather than quietly widening MIT to
+# cover a proprietary blob.
+WAYBEAM_LICENSE = MIT, PROPRIETARY (files/libbin.so)
 WAYBEAM_LICENSE_FILES = LICENSE
 
 # Waybeam has one source tree with a backend per SoC. Keep the existing
@@ -28,7 +32,8 @@ define WAYBEAM_BUILD_CMDS
 		SOC_BUILD=cv610 \
 		CV610_CC="$(TARGET_CC)" \
 		CV610_SDK_INC="$(WAYBEAM_SDK_DIR)" \
-		CV610_SDK_LIB="$(TARGET_DIR)/usr/lib"
+		CV610_SDK_LIB="$(TARGET_DIR)/usr/lib" \
+		CV610_PQ_LIB="$(WAYBEAM_PKGDIR)/files/libbin.so"
 	$(TARGET_MAKE_ENV) $(MAKE) -C $(WAYBEAM_PM_STUB_DIR) clean \
 		KDIR="$(LINUX_DIR)" \
 		CROSS_COMPILE="$(TARGET_CROSS)"
@@ -55,6 +60,16 @@ define WAYBEAM_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/lib/cv610/open_pm_stub.ko
 	$(INSTALL) -D -m 644 $(WAYBEAM_SDK_DIR)/kernel/open_sys_config.ko \
 		$(TARGET_DIR)/usr/lib/cv610/open_sys_config_imx662.ko
+	# Vendor PQ library.  Without it isp.sensorBin and /api/v1/iq/export_bin
+	# warn and no-op; the craft still boots.  Staged by waybeam's own make
+	# from CV610_PQ_LIB above, so there is one source of truth for the file.
+	$(INSTALL) -D -m 755 $(@D)/out/cv610/lib/libbin.so \
+		$(TARGET_DIR)/usr/lib/libbin.so
+	# IQ restore point for this sensor.  Installed, but deliberately NOT
+	# named by the default config: importing a bin at boot is opt-in, and
+	# this one only reproduces the sensor plugin's own cold-boot state.
+	$(INSTALL) -D -m 644 $(@D)/out/cv610/isp-bins/imx662.bin \
+		$(TARGET_DIR)/etc/sensors/imx662.bin
 endef
 
 else
